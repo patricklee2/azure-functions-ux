@@ -1642,4 +1642,10 @@ Set to "External URL" to use an API definition that is hosted elsewhere.</value>
   <data name="readWriteSourceControlled" xml:space="preserve">
     <value>Your app is currently in read\write mode because you've set the edit mode to read\write despite having source control enabled. Any changes you make may get overwritten with your next deployment. To change edit mode visit </value>
   </data>
+  <data name="appFunctionSettings_slotsOptinSettings" xml:space="preserve">
+    <value>Slots (preview)</value>
+  </data>
+  <data name="appFunctionSettings_slotsDesc" xml:space="preserve">
+    <value>Enable slots (preview). This is a one time opt-in feature that cannot be disabled later.</value>
+  </data>
 </root>

@@ -99,6 +99,8 @@ import { SwaggerDefinitionComponent } from './site/swagger-definition/swagger-de
 import { SwaggerFrameDirective } from './site/swagger-frame/swagger-frame.directive';
 import { FnWriteAccessDirective } from './shared/directives/fn-write-access.directive';
 import { EditModeWarningComponent } from './edit-mode-warning/edit-mode-warning.component';
+import { SlotsListComponent } from './slots-list/slots-list.component';
+import { SlotsService } from "./shared/services/slots.service";
 
 
 @NgModule({
@@ -170,6 +172,7 @@ import { EditModeWarningComponent } from './edit-mode-warning/edit-mode-warning.
         ApiNewComponent,
         FunctionsListComponent,
         ProxiesListComponent,
+        SlotsListComponent,
         SwaggerDefinitionComponent,
         SwaggerFrameDirective,
         DisabledDashboardComponent,
@@ -177,7 +180,8 @@ import { EditModeWarningComponent } from './edit-mode-warning/edit-mode-warning.
         TblComponent,
         TblThComponent,
         FnWriteAccessDirective,
-        EditModeWarningComponent
+        EditModeWarningComponent,
+        SlotsListComponent
     ],
     imports: [
         FormsModule,
@@ -207,6 +211,7 @@ import { EditModeWarningComponent } from './edit-mode-warning/edit-mode-warning.
             useClass: window.location.pathname.toLowerCase() === "/try" ? ArmTryService : ArmService
         },
         CacheService,
+        SlotsService,
         AuthzService,
         LocalStorageService,
         TelemetryService,

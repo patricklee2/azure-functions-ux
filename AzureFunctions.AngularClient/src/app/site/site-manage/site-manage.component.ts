@@ -179,7 +179,20 @@ export class SiteManageComponent {
                         WebsiteId : this._descriptor.getWebsiteId()
                     }
                 },
-                this._portalService)            
+                this._portalService),
+                //TODO:sisirap - REMOVE this
+                  new BladeFeature(
+                "Slots",
+                "Slots",
+                "",
+                "images/deployment-credentials.svg",
+                {
+                    detailBlade: "WebsiteSlotsListBlade",
+                    detailBladeInputs: {
+                        resourceUri: this._descriptor.resourceId
+                    }
+                },
+            this._portalService),
         ];
 
         let developmentToolFeatures = [

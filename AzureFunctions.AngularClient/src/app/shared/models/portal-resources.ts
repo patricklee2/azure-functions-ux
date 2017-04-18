@@ -509,5 +509,7 @@ export class PortalResources
     public static error_unableToUpdateFunctionAppEditMode: string = "error_unableToUpdateFunctionAppEditMode";
     public static readOnly: string = "readOnly";
     public static readWriteSourceControlled: string = "readWriteSourceControlled";
+    public static appFunctionSettings_slotsOptinSettings: string = "appFunctionSettings_slotsOptinSettings";
+    public static appFunctionSettings_slotsDesc: string = "appFunctionSettings_slotsDesc";
 }
 

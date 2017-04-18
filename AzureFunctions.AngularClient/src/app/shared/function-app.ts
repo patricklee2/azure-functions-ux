@@ -52,6 +52,7 @@ declare var mixpanel: any;
 
 export class FunctionApp {
     private masterKey: string;
+    private _tokenForMasterKey: string;
     private token: string;
     private _scmUrl: string;
     private storageConnectionString: string;
@@ -754,43 +755,53 @@ export class FunctionApp {
     }
 
     getHostSecretsFromScm() {
-        // call kudu
-        return this._http.get(`${this._scmUrl}/api/functions/admin/masterkey`, { headers: this.getScmSiteHeaders() })
-            .do((r: Response) => {
-                    let key: { masterKey: string } = r.json();
-                    this.masterKey = key.masterKey;
-                    this._broadcastService.broadcast<string>(BroadcastEvent.ClearError, ErrorIds.unableToRetrieveRuntimeKeyFromScm);
-                },
-                (error: FunctionsResponse) => {
-                    if (!error.isHandled) {
-                        try {
-                            let exception: WebApiException = error.json();
-                            if (exception.ExceptionType === 'System.Security.Cryptography.CryptographicException') {
-                                this._broadcastService.broadcast<ErrorEvent>(BroadcastEvent.Error, {
-                                    message: this._translateService.instant(PortalResources.error_unableToDecryptKeys),
-                                    errorId: ErrorIds.unableToDecryptKeys,
-                                    errorType: ErrorType.RuntimeError
-                                });
-                                this.trackEvent(ErrorIds.unableToDecryptKeys, {
-                                    content: error.text(),
-                                    status: error.status.toString()
-                                });
-                                return;
-                            }
-                        } catch (e) {
-                            // no-op
-                        }
+    return this._http.get(`${this._scmUrl}/api/functions/admin/token`, { headers: this.getScmSiteHeaders() })
+        .map((r: Response) => {
+            return r.json();
+        })
+        .flatMap((token: string) => {
+            // Call the main site to get the masterKey
+            // build authorization header
+            let authHeader = new Headers();
+            authHeader.append('Authorization', `Bearer ${token}`);
+            return this._http.post(`${this.mainSiteUrl}/admin/host/keys/_master`, '', { headers: authHeader })
+                .do((r: Response) => {
+                    let key: { name: string, value: string } = r.json();
+                    this.masterKey = key.value;
+                })
+        }).do(() =>{
+            this._broadcastService.broadcast<string>(BroadcastEvent.ClearError, ErrorIds.unableToRetrieveRuntimeKeyFromScm);
+        },
+        (error: FunctionsResponse) => {
+            if (!error.isHandled) {
+                try {
+                    let exception: WebApiException = error.json();
+                    if (exception.ExceptionType === 'System.Security.Cryptography.CryptographicException') {
                         this._broadcastService.broadcast<ErrorEvent>(BroadcastEvent.Error, {
-                            message: this._translateService.instant(PortalResources.error_unableToRetrieveRuntimeKey),
-                            errorId: ErrorIds.unableToRetrieveRuntimeKeyFromScm,
+                            message: this._translateService.instant(PortalResources.error_unableToDecryptKeys),
+                            errorId: ErrorIds.unableToDecryptKeys,
                             errorType: ErrorType.RuntimeError
                         });
-                        this.trackEvent(ErrorIds.unableToRetrieveRuntimeKeyFromScm, {
-                            status: error.status.toString(),
+                        this.trackEvent(ErrorIds.unableToDecryptKeys, {
                             content: error.text(),
+                            status: error.status.toString()
                         });
+                        return;
                     }
+                } catch (e) {
+                    // no-op
+                }
+                this._broadcastService.broadcast<ErrorEvent>(BroadcastEvent.Error, {
+                    message: this._translateService.instant(PortalResources.error_unableToRetrieveRuntimeKey),
+                    errorId: ErrorIds.unableToRetrieveRuntimeKeyFromScm,
+                    errorType: ErrorType.RuntimeError
                 });
+                this.trackEvent(ErrorIds.unableToRetrieveRuntimeKeyFromScm, {
+                    status: error.status.toString(),
+                    content: error.text(),
+                });
+            }
+        });
     }
 
     legacyGetHostSecrets() {
@@ -1407,6 +1418,12 @@ export class FunctionApp {
         headers.append('Accept', 'application/json,*/*');
         headers.append('x-functions-key', this.masterKey);
         return headers;
+    }
+
+    private _getHeaderForObtainingMasterKey() :Headers{
+         let headers = new Headers();
+         headers.append('Auhtorization', `Bearer ${this._tokenForMasterKey}`);
+         return headers;
     }
 
     // to talk to Functions Portal

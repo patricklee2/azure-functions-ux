@@ -34,7 +34,7 @@
             <div><img *ngIf="stateIcon" [src]="stateIcon" />{{state}}</div>
         </div>
 
-        <div [class.invisible]="site?.properties.sku === 'Dynamic'">
+        <div [class.invisible]="showAvailability">
             <label>{{'availability' | translate}}</label>
             <div [class.site-faded-text]="availabilityState === 'unknown'">
                 <img *ngIf="availabilityIcon" [src]="availabilityIcon" />{{availabilityMesg}}

@@ -11,7 +11,8 @@ export enum Feature{
     SSLBinding,
     ApiDefinition,
     WebJobs,
-    SiteExtensions
+    SiteExtensions,
+    Slots //TODO:sisirap - Delete before CR
 }
 
 export interface EnabledFeatures extends StorageItem{

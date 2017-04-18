@@ -286,6 +286,24 @@ namespace AzureFunctions.ResourcesPortal {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enable slots (preview). This is a one time opt-in feature that cannot be disabled later..
+        /// </summary>
+        internal static string appFunctionSettings_slotsDesc {
+            get {
+                return ResourceManager.GetString("appFunctionSettings_slotsDesc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Slots (preview).
+        /// </summary>
+        internal static string appFunctionSettings_slotsOptinSettings {
+            get {
+                return ResourceManager.GetString("appFunctionSettings_slotsOptinSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Enable Azure Functions Proxies (preview).
         /// </summary>
         internal static string appFunctionSettings_useApiProxies {

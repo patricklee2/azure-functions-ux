@@ -187,6 +187,19 @@ export class SiteEnabledFeaturesComponent {
                         }
                     }
                 }
+                //TODO: sisirap - delete this before putting in CR
+            case Feature.Slots:
+                return <EnabledFeatureItem>{
+                    title: "Slots",
+                    feature: feature,
+                    iconUrl: "images/authentication.svg",
+                    bladeInfo: {
+                        detailBlade: "WebsiteSlotsListBlade",
+                        detailBladeInputs: {
+                            resourceUri: this._site.id
+                        }
+                    }
+                }
 
             case Feature.CustomDomains:
                 return <EnabledFeatureItem>{
@@ -235,7 +248,7 @@ export class SiteEnabledFeaturesComponent {
                     iconUrl : "images/webjobs.svg",
                     bladeInfo :
                     {
-                        detailBlade : "webjobsNewBlade",
+                        detailBlade: "WebsiteSlotsListBlade",
                         detailBladeInputs : {
                             resourceUri : this._site.id
                         }
