@@ -16,7 +16,7 @@ import { ConfigService } from './../../shared/services/config.service';
 import { PortalService } from './../../shared/services/portal.service';
 import { PortalResources } from './../../shared/models/portal-resources';
 import { AiService } from './../../shared/services/ai.service';
-import { SiteTabIds, LocalStorageKeys, EnableTabFeature } from './../../shared/models/constants';
+import { SiteTabIds, LocalStorageKeys } from './../../shared/models/constants';
 import { AppNode } from './../../tree-view/app-node';
 import { TabsComponent } from '../../tabs/tabs.component';
 import { TabComponent } from '../../tab/tab.component';
@@ -51,8 +51,6 @@ export class SiteDashboardComponent {
     public TabIds = SiteTabIds;
     public Resources = PortalResources;
     public isStandalone = false;
-    public tabsFeature: EnableTabFeature;
-    public openFeatureId = new Subject<string>();
     private _prevFeatureId: string;
 
     private _tabsLoaded = false;
@@ -68,7 +66,6 @@ export class SiteDashboardComponent {
         private _storageService: LocalStorageService) {
 
         this.isStandalone = _configService.isStandalone();
-        this.tabsFeature = <EnableTabFeature>Url.getParameterByName(window.location.href, 'appsvc.feature.tabs');
 
         this.viewInfoStream = new Subject<TreeViewInfo<SiteData>>();
         this.viewInfoStream
@@ -156,8 +153,6 @@ export class SiteDashboardComponent {
         this._traceOnTabSelection = true;
         this._prevFeatureId = this.selectedTabId;
         this.selectedTabId = selectedTab.id;
-
-        this.openFeatureId.next(null);
     }
 
     closeDynamicTab(tab: TabComponent) {
@@ -193,42 +188,25 @@ export class SiteDashboardComponent {
 
     openFeature(featureId: string) {
 
-        if (this.tabsFeature === 'tabs') {
-            this._prevFeatureId = this.selectedTabId;
+        this._prevFeatureId = this.selectedTabId;
 
-            if (featureId === SiteTabIds.functionRuntime) {
-                this.dynamicTabIds[0] = featureId;
-            } else if (featureId === SiteTabIds.apiDefinition) {
-                this.dynamicTabIds[1] = featureId;
-            }
-
-            const tabSettings = <TabSettings>{
-                id: LocalStorageKeys.siteTabs,
-                dynamicTabIds: this.dynamicTabIds
-            };
-
-            this._storageService.setItem(LocalStorageKeys.siteTabs, tabSettings);
-
-            setTimeout(() => {
-                this.tabs.selectTabId(featureId);
-            }, 100);
-
+        if (featureId === SiteTabIds.functionRuntime) {
+            this.dynamicTabIds[0] = featureId;
+        } else if (featureId === SiteTabIds.apiDefinition) {
+            this.dynamicTabIds[1] = featureId;
         }
-        else if (this.tabsFeature === 'inplace') {
-            if (featureId) {
-                this.tabs.selectTabId(SiteTabIds.features);
-            }
-            else {
-                this.tabs.selectTabId(this._prevFeatureId);
-            }
 
-            setTimeout(() => {
-                this.openFeatureId.next(featureId);
-            }, 100)
-        }
-        else {
+        const tabSettings = <TabSettings>{
+            id: LocalStorageKeys.siteTabs,
+            dynamicTabIds: this.dynamicTabIds
+        };
+
+        this._storageService.setItem(LocalStorageKeys.siteTabs, tabSettings);
+
+        setTimeout(() => {
             this.tabs.selectTabId(featureId);
-        }
+        }, 100);
+
     }
 
     pinPart() {

@@ -8,15 +8,6 @@
             <site-summary *ngIf="selectedTabId === TabIds.overview" [viewInfoInput]="viewInfo"></site-summary>
         </tab>
 
-        <tab *ngIf="!isStandalone && !tabsFeature"
-             [title]="(tabsFeature ? Resources.tab_functionSettings : Resources.tab_settings) | translate"
-             [id]="TabIds.functionRuntime"
-             [closeable]="tabsFeature === 'tabs'"
-             [iconUrl]="tabsFeature ? 'images/Functions.svg' : null">
-
-            <function-runtime *ngIf="selectedTabId === TabIds.functionRuntime" [viewInfoInput]="viewInfo"></function-runtime>
-        </tab>
-
         <tab *ngIf="!isStandalone"
              [title]="Resources.tab_features | translate"
              [id]="TabIds.features">
@@ -25,19 +16,19 @@
         </tab>
 
         <tab *ngIf="!isStandalone && dynamicTabIds[0] === TabIds.functionRuntime"
-             [title]="(tabsFeature ? Resources.tab_functionSettings : Resources.tab_settings) | translate"
+             [title]="'tab_functionSettings' | translate"
              [id]="TabIds.functionRuntime"
-             [closeable]="tabsFeature === 'tabs'"
-             [iconUrl]="tabsFeature ? 'images/Functions.svg' : null">
+             closeable="true"
+             iconUrl="images/Functions.svg">
 
             <function-runtime *ngIf="selectedTabId === TabIds.functionRuntime" [viewInfoInput]="viewInfo"></function-runtime>
         </tab>
 
-        <tab *ngIf="!isStandalone && (!tabsFeature || dynamicTabIds[1] === TabIds.apiDefinition)"
-             [title]="Resources.tab_api_definition | translate"
+        <tab *ngIf="!isStandalone && dynamicTabIds[1] === TabIds.apiDefinition"
+             [title]="'tab_api_definition' | translate"
              [id]="TabIds.apiDefinition"
-             [closeable]="tabsFeature === 'tabs'"
-             [iconUrl]="tabsFeature ? 'images/api-definition.svg' : null">
+             closeable="true"
+             iconUrl="images/api-definition.svg">
 
             <swaggerdefinition *ngIf="selectedTabId === TabIds.apiDefinition" [viewInfoInput]="viewInfo"></swaggerdefinition>
         </tab>
