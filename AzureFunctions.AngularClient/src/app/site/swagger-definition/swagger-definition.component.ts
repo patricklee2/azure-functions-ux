@@ -1,3 +1,4 @@
+import { SiteTabComponent } from './../site-dashboard/site-tab/site-tab.component';
 import { Component, Input, OnInit, EventEmitter, NgZone, OnDestroy } from '@angular/core';
 import { Response } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
@@ -72,9 +73,9 @@ export class SwaggerDefinitionComponent implements OnDestroy {
         private _cacheService: CacheService,
         private _broadcastService: BroadcastService,
         private _translateService: TranslateService,
-        tabsComponent: TabsComponent
+        siteTabComponent: SiteTabComponent
     ) {
-        this._busyState = tabsComponent.busyState;
+        this._busyState = siteTabComponent.busyState;
 
         this._viewInfoSub = this._viewInfoStream
             .switchMap(viewInfo => {

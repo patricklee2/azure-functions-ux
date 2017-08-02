@@ -1117,6 +1117,9 @@
   <data name="enabledFeatures_description" xml:space="preserve">
     <value>Quick links to your features will show up here after you've configured them from the "Platform features" tab above.</value>
   </data>
+  <data name="siteDashboard_confirmLoseChanges" xml:space="preserve">
+    <value>Unsaved changes for the app '{0}' that will be lost.  Are you sure you would like to continue?</value>
+  </data>
   <data name="siteDashboard_getAppError" xml:space="preserve">
     <value>There was an error retrieving information about the app '{0}'</value>
   </data>
@@ -1908,7 +1911,7 @@ Set to "External URL" to use an API definition that is hosted elsewhere.</value>
   </data>
   <data name="apiProxy_delete" xml:space="preserve">
     <value>Delete proxy
-</value>
+  </value>
   </data>
   <data name="apiProxy_new" xml:space="preserve">
     <value>New proxy</value>

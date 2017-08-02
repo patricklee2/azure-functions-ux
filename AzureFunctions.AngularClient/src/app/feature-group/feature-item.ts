@@ -1,3 +1,5 @@
+import { BroadcastEvent } from 'app/shared/models/broadcast-event';
+import { BroadcastService } from './../shared/services/broadcast.service';
 import { SiteDashboardComponent } from './../site/site-dashboard/site-dashboard.component';
 import { Subject } from 'rxjs/Subject';
 import { Subscription as RxSubscription } from 'rxjs/Subscription';
@@ -164,12 +166,12 @@ export class TabFeature extends FeatureItem {
         info: string,
         imageUrl: string,
         public featureId: string,
-        private _siteDashboard: SiteDashboardComponent) {
+        private _broadcastService: BroadcastService) {
 
         super(title, keywords, info, imageUrl, 'images/new-tab.svg');
     }
 
     click() {
-        this._siteDashboard.openFeature(this.featureId);
+        this._broadcastService.broadcast(BroadcastEvent.OpenTab, this.featureId);
     }
 }

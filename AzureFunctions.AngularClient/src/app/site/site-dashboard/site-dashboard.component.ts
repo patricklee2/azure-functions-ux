@@ -1,7 +1,17 @@
+import { DirtyStateEvent } from './../../shared/models/broadcast-event';
+import { SiteConfigComponent } from './../site-config/site-config.component';
+import { SwaggerDefinitionComponent } from './../swagger-definition/swagger-definition.component';
+import { FunctionRuntimeComponent } from './../function-runtime/function-runtime.component';
+import { Subscription as RxSubscription } from 'rxjs/Subscription';
+import { BroadcastEvent } from 'app/shared/models/broadcast-event'; import { BroadcastService } from './../../shared/services/broadcast.service';
+import { SiteManageComponent } from './../site-manage/site-manage.component';
+import { TabInfo } from './../../controls/tabs/tab/tab-info';
+import { SiteSummaryComponent } from './../site-summary/site-summary.component';
+import { DynamicLoaderDirective } from './../../shared/directives/dynamic-loader.directive';
 import { SiteData } from './../../tree-view/models/tree-view-info';
 import { Url } from './../../shared/Utilities/url';
 import { LocalStorageService } from './../../shared/services/local-storage.service';
-import { Component, OnInit, EventEmitter, Input, ViewChild } from '@angular/core';
+import { Component, OnInit, EventEmitter, Input, ViewChild, SimpleChange, OnChanges, ComponentFactoryResolver, OnDestroy, Type } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
@@ -18,8 +28,6 @@ import { PortalResources } from './../../shared/models/portal-resources';
 import { AiService } from './../../shared/services/ai.service';
 import { SiteTabIds, LocalStorageKeys } from './../../shared/models/constants';
 import { AppNode } from './../../tree-view/app-node';
-import { TabsComponent } from '../../tabs/tabs.component';
-import { TabComponent } from '../../tab/tab.component';
 import { CacheService } from '../../shared/services/cache.service';
 import { GlobalStateService } from '../../shared/services/global-state.service';
 import { TreeViewInfo } from '../../tree-view/models/tree-view-info';
@@ -34,27 +42,31 @@ import { TabSettings } from './../../shared/models/localStorage/local-storage';
     selector: 'site-dashboard',
     templateUrl: './site-dashboard.component.html',
     styleUrls: ['./site-dashboard.component.scss'],
-    inputs: ['viewInfoInput']
 })
 
-export class SiteDashboardComponent {
-    @ViewChild(TabsComponent) tabs: TabsComponent;
+export class SiteDashboardComponent implements OnChanges, OnDestroy {
 
-    public selectedTabId: string = SiteTabIds.overview;
+    // We keep a static copy of all the tabs that are open becuase we want to reopen them
+    // if a user changes apps or navigates away and comes back.  But we also create an instance
+    // copy because the template can't reference static properties
+    private static _tabInfos: TabInfo[] = [];
+    public tabInfos: TabInfo[] = SiteDashboardComponent._tabInfos;
 
-    // For now I'm just hard-coding tab positions to 0 = Function settings, 1 = API definition.
-    // If we end up doing a full tabs implementation, it would have to be dynamic
+    @Input() viewInfo: TreeViewInfo<SiteData>;
+
     public dynamicTabIds: (string | null)[] = [null, null];
     public site: ArmObj<Site>;
     public viewInfoStream: Subject<TreeViewInfo<SiteData>>;
-    public viewInfo: TreeViewInfo<SiteData>;
     public TabIds = SiteTabIds;
     public Resources = PortalResources;
     public isStandalone = false;
-    private _prevFeatureId: string;
+
+    private _currentTabId: string;
+    private _prevTabId: string;
 
     private _tabsLoaded = false;
-    private _traceOnTabSelection = false;
+    private _openTabSubscription: RxSubscription;
+    private _dirtySub: RxSubscription;
 
     constructor(
         private _cacheService: CacheService,
@@ -63,9 +75,42 @@ export class SiteDashboardComponent {
         private _portalService: PortalService,
         private _translateService: TranslateService,
         private _configService: ConfigService,
-        private _storageService: LocalStorageService) {
+        private _storageService: LocalStorageService,
+        private _broadcastService: BroadcastService) {
 
         this.isStandalone = _configService.isStandalone();
+
+        this._openTabSubscription = this._broadcastService.subscribe<string>(BroadcastEvent.OpenTab, tabId => {
+            this.openFeature(tabId);
+        });
+
+        this._dirtySub = this._broadcastService.subscribe<DirtyStateEvent>(BroadcastEvent.DirtyStateChange, event => {
+            if (event.dirty && !event.reason) {
+                this.tabInfos.forEach(t => t.dirty = false);
+            } else {
+                const info = this.tabInfos.find(t => t.id === event.reason);
+                if (info) {
+                    info.dirty = event.dirty;
+                }
+            }
+        })
+
+        if (this.tabInfos.length === 0) {
+
+            // Setup initial tabs without inputs immediate so that they load right away
+            this.tabInfos = [this._getTabInfo(SiteTabIds.overview, true /* active */, null)];
+
+            if (this.isStandalone) {
+                this.tabInfos.push(this._getTabInfo(SiteTabIds.config, false /* active */, null));
+            } else {
+                this.tabInfos.push(this._getTabInfo(SiteTabIds.features, false /* active */, null));
+            }
+        }
+
+        const activeTab = this.tabInfos.find(info => info.active);
+        if (activeTab) {
+            this._currentTabId = activeTab.id;
+        }
 
         this.viewInfoStream = new Subject<TreeViewInfo<SiteData>>();
         this.viewInfoStream
@@ -75,112 +120,98 @@ export class SiteDashboardComponent {
                     this._globalStateService.setDisabledMessage(this._translateService.instant(PortalResources.try_appDisabled));
                 }
 
-                if (!this._tabsLoaded) {
-                    // We only set to false on 1st time load because that's the only time
-                    // that we'll update the viewInfoStream, AND call onTabSelected.  Changing
-                    // tabs only calls onTabSelected, and clicking on another app will only
-                    // update the stream.
-                    this._traceOnTabSelection = false;
-                }
-
                 viewInfo.data.siteTabRevealedTraceKey = this._aiService.startTrace();
                 viewInfo.data.siteTabFullReadyTraceKey = this._aiService.startTrace();
 
                 this._globalStateService.setBusyState();
 
-                return Observable.zip(
-                    Observable.of(viewInfo),
-                    this._cacheService.getArm(viewInfo.resourceId),
-                    (v, s) => ({ viewInfo: v, site: s }));
+                return this._cacheService.getArm(viewInfo.resourceId);
             })
             .do(null, e => {
-                let descriptor = new SiteDescriptor(this.viewInfo.resourceId);
+                const descriptor = new SiteDescriptor(this.viewInfo.resourceId);
                 let message = this._translateService.instant(PortalResources.siteDashboard_getAppError).format(descriptor.site);
                 if (e && e.status === 404) {
                     message = this._translateService.instant(PortalResources.siteDashboard_appNotFound).format(descriptor.site);
                 }
 
-                this._aiService.trackException(e, "/errors/site-dashboard");
+                this._aiService.trackException(e, '/errors/site-dashboard');
 
                 this._globalStateService.setDisabledMessage(message);
                 this._globalStateService.clearBusyState();
             })
             .retry()
             .subscribe(r => {
-                this._globalStateService.clearBusyState();
-                this.viewInfo = r.viewInfo;
 
-                let site: ArmObj<Site> = r.site.json();
-                this.site = site;
+                this._broadcastService.clearAllDirtyStates();
 
-                // Is a bit hacky but seems to work well enough in waiting for the tabs to load.
-                // AfterContentInit doesn't work and even if it did, it only gets called on the first
-                // time the component is loaded.
-                setTimeout(() => {
-                    let appNode = <AppNode>this.viewInfo.node;
-                    if (this.tabs && this.tabs.tabs) {
+                for (let i = 0; i < this.tabInfos.length; i++) {
+                    const info = this.tabInfos[i];
 
-                        let savedTabInfo = <TabSettings>this._storageService.getItem(LocalStorageKeys.siteTabs);
-                        if (appNode.openFunctionSettingsTab) {
-                            let tabs = this.tabs.tabs.toArray();
-                            let functionTab = tabs.find(t => t.id === SiteTabIds.functionRuntime);
-                            if (functionTab) {
-                                this.tabs.selectTab(functionTab);
-                            }
+                    if (info.active) {
+                        // We're not recreating the active tab so that it doesn't flash in the UI
+                        this.tabInfos[i].componentInput = { viewInfoInput: this.viewInfo };
+                    } else {
 
-                            appNode.openFunctionSettingsTab = false;
-                        }
-                        else if (savedTabInfo) {
-                            this.dynamicTabIds = savedTabInfo.dynamicTabIds;
-                        }
-                    }
-                }, 100);
-            });
-    }
-
-    set viewInfoInput(viewInfo: TreeViewInfo<SiteData>) {
-        this.viewInfoStream.next(viewInfo);
-    }
-
-    onTabSelected(selectedTab: TabComponent) {
-
-        if (this._traceOnTabSelection) {
-            this.viewInfo.data.siteTabRevealedTraceKey = this._aiService.startTrace();
-            this.viewInfo.data.siteTabFullReadyTraceKey = this._aiService.startTrace();
-        }
-
-        this._tabsLoaded = true;
-        this._traceOnTabSelection = true;
-        this._prevFeatureId = this.selectedTabId;
-        this.selectedTabId = selectedTab.id;
-    }
-
-    closeDynamicTab(tab: TabComponent) {
-        const tabIndex = this.dynamicTabIds.findIndex(id => id === tab.id);
-
-        if (tabIndex >= 0) {
-            this.dynamicTabIds[tabIndex] = null;
-
-            const tabSettings = <TabSettings>{
-                id: LocalStorageKeys.siteTabs,
-                dynamicTabIds: this.dynamicTabIds
-            };
-
-            this._storageService.setItem(LocalStorageKeys.siteTabs, tabSettings);
-
-            if (tab.id === this.selectedTabId) {
-                let tabIndexToOpen = -1;
-                for (let i = this.dynamicTabIds.length - 1; i > -1; i--) {
-                    if (this.dynamicTabIds[i]) {
-                        tabIndexToOpen = i;
-                        break;
+                        // Just to be extra safe, we create new component instances for tabs that
+                        // aren't visible to be sure that we can't accidentally load them with the wrong
+                        // input in the future.  This also helps to dispose of other unused components
+                        // when we switch apps.
+                        this.tabInfos[i] = this._getTabInfo(info.id, false /* active */, { viewInfoInput: this.viewInfo });
                     }
                 }
 
-                if (tabIndexToOpen > -1) {
-                    this.tabs.selectTabId(this.dynamicTabIds[tabIndexToOpen]);
-                } else {
-                    this.tabs.selectTabId(SiteTabIds.features);
+                this._globalStateService.clearBusyState();
+
+                const site: ArmObj<Site> = r.json();
+                this.site = site;
+
+                const appNode = <AppNode>this.viewInfo.node;
+                if (appNode.openTabId) {
+                    this.openFeature(appNode.openTabId);
+                    appNode.openTabId = null;
+                }
+            });
+    }
+
+    ngOnDestroy() {
+        this._openTabSubscription.unsubscribe();
+        this._dirtySub.unsubscribe();
+
+        // Save current set of tabs
+        SiteDashboardComponent._tabInfos = this.tabInfos;
+    }
+
+    ngOnChanges(changes: { [key: string]: SimpleChange }) {
+        if (changes['viewInfo']) {
+            this.viewInfoStream.next(this.viewInfo);
+        }
+    }
+
+    private _selectTabId(id: string) {
+        this.selectTab(this.tabInfos.find(i => i.id === id));
+    }
+
+    selectTab(info: TabInfo) {
+        this._aiService.trackEvent('/sites/open-tab', { name: info.id });
+        this.tabInfos.forEach(t => t.active = t.id === info.id);
+
+        this.viewInfo.data.siteTabRevealedTraceKey = this._aiService.startTrace();
+        this.viewInfo.data.siteTabFullReadyTraceKey = this._aiService.startTrace();
+
+        this._tabsLoaded = true;
+        this._prevTabId = this._currentTabId;
+        this._currentTabId = info.id;
+    }
+
+    closeTab(info: TabInfo) {
+        const tabIndexToClose = this.tabInfos.findIndex(i => i.id === info.id);
+        if (tabIndexToClose >= 0) {
+            this.tabInfos.splice(tabIndexToClose, 1);
+
+            // Only need to worry about opening a new tab if the tab being closed is the current one.
+            if (info.id === this._currentTabId) {
+                if (this._prevTabId) {
+                    this._selectTabId(this._prevTabId);
                 }
             }
         }
@@ -188,25 +219,15 @@ export class SiteDashboardComponent {
 
     openFeature(featureId: string) {
 
-        this._prevFeatureId = this.selectedTabId;
+        this._prevTabId = this._currentTabId;
+        let tabInfo = this.tabInfos.find(t => t.id === featureId);
 
-        if (featureId === SiteTabIds.functionRuntime) {
-            this.dynamicTabIds[0] = featureId;
-        } else if (featureId === SiteTabIds.apiDefinition) {
-            this.dynamicTabIds[1] = featureId;
+        if (!tabInfo) {
+            tabInfo = this._getTabInfo(featureId, true /* active */, { viewInfoInput: this.viewInfo });
+            this.tabInfos.push(tabInfo);
         }
 
-        const tabSettings = <TabSettings>{
-            id: LocalStorageKeys.siteTabs,
-            dynamicTabIds: this.dynamicTabIds
-        };
-
-        this._storageService.setItem(LocalStorageKeys.siteTabs, tabSettings);
-
-        setTimeout(() => {
-            this.tabs.selectTabId(featureId);
-        }, 100);
-
+        this.selectTab(tabInfo);
     }
 
     pinPart() {
@@ -215,6 +236,53 @@ export class SiteDashboardComponent {
             partInput: {
                 id: this.viewInfo.resourceId
             }
-        })
+        });
+    }
+
+    private _getTabInfo(tabId: string, active: boolean, input: { viewInfoInput: TreeViewInfo<SiteData> }): TabInfo {
+        const info = {
+            title: '',
+            id: tabId,
+            active: active,
+            closeable: true,
+            iconUrl: null,
+            dirty: false,
+            componentFactory: null,
+            componentInput: input ? input : {}
+        };
+
+        switch (tabId) {
+            case SiteTabIds.overview:
+                info.title = this._translateService.instant(PortalResources.tab_overview);
+                info.componentFactory = SiteSummaryComponent;
+                info.closeable = false;
+                break;
+
+            case SiteTabIds.features:
+                info.title = this._translateService.instant(PortalResources.tab_features);
+                info.componentFactory = SiteManageComponent;
+                info.closeable = false;
+                break;
+
+            case SiteTabIds.functionRuntime:
+                info.title = this._translateService.instant(PortalResources.tab_functionSettings);
+                info.iconUrl = 'images/Functions.svg';
+                info.componentFactory = FunctionRuntimeComponent;
+                break;
+
+            case SiteTabIds.apiDefinition:
+                info.title = this._translateService.instant(PortalResources.tab_api_definition);
+                info.iconUrl = 'images/api-definition.svg';
+                info.componentFactory = SwaggerDefinitionComponent;
+                break;
+
+            case SiteTabIds.config:
+                info.title = this._translateService.instant(PortalResources.tab_configuration);
+                info.componentFactory = SiteConfigComponent;
+                info.closeable = false;
+                break;
+        }
+
+        return info;
     }
 }

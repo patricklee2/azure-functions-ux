@@ -98,20 +98,27 @@ export class PortalService {
         if (PortalService.inTab()) {
             // create own id and set
             this.tabId = Guid.newTinyGuid();
-            //send id back to parent
+            // send id back to parent
             this._sendTabMessage<null>(this.tabId, TabCommunicationVerbs.getStartInfo, null, null);
         }
     }
 
     private recieveStorageMessage(item: StorageEvent) {
 
-        const msg: TabMessage<any> = JSON.parse(item.newValue);
+        let msg: TabMessage<any>;
 
-        if (!msg) {
+        try {
+            msg = JSON.parse(item.newValue);
+
+            if (!msg) {
+                return;
+            }
+
+            Logger.debug(item);
+        } catch (e) {
+            Logger.debug(e);
             return;
         }
-
-        Logger.debug(item);
 
         if (PortalService.inIFrame()) {
             // if parent recieved new id call

@@ -1,5 +1,5 @@
+import { BroadcastService } from './../../shared/services/broadcast.service';
 import { Subscription as RxSubscription } from 'rxjs/Subscription';
-import { SiteDashboardComponent } from './../site-dashboard/site-dashboard.component';
 import { Url } from './../../shared/Utilities/url';
 import { SiteTabIds } from './../../shared/models/constants';
 import { Component, OnInit, EventEmitter, Input, Output, OnDestroy } from '@angular/core';
@@ -65,7 +65,7 @@ export class SiteManageComponent implements OnDestroy {
         private _cacheService: CacheService,
         private _globalStateService: GlobalStateService,
         private _translateService: TranslateService,
-        private _siteDashboard: SiteDashboardComponent) {
+        private _broadcastService: BroadcastService) {
 
         this._viewInfoStream
             .switchMap(viewInfo => {
@@ -244,7 +244,7 @@ export class SiteManageComponent implements OnDestroy {
                 this._translateService.instant(PortalResources.feature_functionSettingsInfo),
                 'images/functions.svg',
                 SiteTabIds.functionRuntime,
-                this._siteDashboard),
+                this._broadcastService),
 
             new BladeFeature(
                 this._translateService.instant(PortalResources.feature_applicationSettingsName),
@@ -447,7 +447,7 @@ export class SiteManageComponent implements OnDestroy {
                 this._translateService.instant(PortalResources.feature_apiDefinitionInfo),
                 'images/api-definition.svg',
                 SiteTabIds.apiDefinition,
-                this._siteDashboard
+                this._broadcastService
             ),
 
             new BladeFeature(
@@ -588,11 +588,6 @@ export class SiteManageComponent implements OnDestroy {
             new FeatureGroup(this._translateService.instant(PortalResources.feature_api), apiManagementFeatures),
             new FeatureGroup(this._translateService.instant(PortalResources.appServicePlan), appServicePlanFeatures),
             new FeatureGroup(this._translateService.instant(PortalResources.feature_resourceManagement), resourceManagementFeatures)];
-    }
-
-    navBack() {
-        // this.selectedFeatureId = null;
-        this._siteDashboard.openFeature(null);
     }
 }
 

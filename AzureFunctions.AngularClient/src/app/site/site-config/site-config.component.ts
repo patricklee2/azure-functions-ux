@@ -1,4 +1,7 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { SiteTabIds } from './../../shared/models/constants';
+import { BroadcastService } from './../../shared/services/broadcast.service';
+import { SiteTabComponent } from './../site-dashboard/site-tab/site-tab.component';
+import { Component, OnInit, Input, OnDestroy } from '@angular/core';
 import { FormBuilder, FormArray, FormGroup, Validators } from '@angular/forms';
 import { Observable } from 'rxjs/Observable';
 import { Subject } from 'rxjs/Subject';
@@ -25,7 +28,7 @@ import { RequiredValidator } from 'app/shared/validators/requiredValidator';
   templateUrl: './site-config.component.html',
   styleUrls: ['./site-config.component.scss']
 })
-export class SiteConfigComponent implements OnInit {
+export class SiteConfigComponent implements OnInit, OnDestroy {
   public viewInfoStream: Subject<TreeViewInfo<SiteData>>;
 
   public mainForm: FormGroup;
@@ -33,6 +36,7 @@ export class SiteConfigComponent implements OnInit {
   public Resources = PortalResources;
 
   private _viewInfoSubscription: RxSubscription;
+  private _valueSubscription: RxSubscription;
   private _appSettingsArm: ArmObj<any>;
   private _connectionStringsArm: ArmObj<ConnectionStrings>;
   private _busyState: BusyStateComponent;
@@ -47,9 +51,11 @@ export class SiteConfigComponent implements OnInit {
     private _fb: FormBuilder,
     private _translateService: TranslateService,
     private _aiService: AiService,
-    tabsComponent: TabsComponent
+    private _broadcastService: BroadcastService,
+    siteTabComponent: SiteTabComponent
   ) {
-    this._busyState = tabsComponent.busyState;
+
+    this._busyState = siteTabComponent.busyState;
 
     this.viewInfoStream = new Subject<TreeViewInfo<SiteData>>();
     this._viewInfoSubscription = this.viewInfoStream
@@ -133,11 +139,25 @@ export class SiteConfigComponent implements OnInit {
     this.mainForm = this._fb.group({
       appSettings: appSettings,
       connectionStrings: connectionStrings
-    })
+    });
+
+    this._broadcastService.clearDirtyState(SiteTabIds.config);
+
+    if(this._valueSubscription){
+      this._valueSubscription.unsubscribe();
+    }
+
+    // Unfortunately there isn't a callback for dirty state on a form, so this is a workaround.
+    this._valueSubscription = this.mainForm.valueChanges.subscribe(v => {
+        if (this.mainForm.dirty) {
+          this._broadcastService.setDirtyState(SiteTabIds.config);
+        }
+    });
+
   }
 
   private _getConnectionStringTypes(defaultType: ConnectionStringType) {
-    let connectionStringDropDownTypes: DropDownElement<string>[] = []
+    const connectionStringDropDownTypes: DropDownElement<string>[] = []
 
     EnumEx.getNamesAndValues(ConnectionStringType).forEach(pair => {
       connectionStringDropDownTypes.push({
@@ -159,6 +179,10 @@ export class SiteConfigComponent implements OnInit {
 
   ngOnDestroy(): void {
     this._viewInfoSubscription.unsubscribe();
+
+    if(this._valueSubscription){
+      this._valueSubscription.unsubscribe();
+    }
   }
 
   save() {
@@ -237,10 +261,11 @@ export class SiteConfigComponent implements OnInit {
   }
 
   private _deleteRow(group: FormGroup, formArray: FormArray) {
+
     let index = formArray.controls.indexOf(group);
     if (index >= 0) {
-      formArray.controls.splice(index, 1);
       group.markAsDirty();
+      formArray.removeAt(index);
     }
   }
 
@@ -256,8 +281,8 @@ export class SiteConfigComponent implements OnInit {
     });
 
     (<CustomFormGroup>group)._msStartInEditMode = true;
-    appSettings.push(group);
     this.mainForm.markAsDirty();
+    appSettings.push(group);
   }
 
   addConnectionString() {
@@ -275,11 +300,10 @@ export class SiteConfigComponent implements OnInit {
       type: [connectionStringDropDownTypes.find(t => t.default).value]
     });
 
+    this.mainForm.markAsDirty();
     (<any>group).csTypes = connectionStringDropDownTypes;
     connectionStrings.push(group);
 
     (<CustomFormGroup>group)._msStartInEditMode = true;
-
-    this.mainForm.markAsDirty();
   }
 }

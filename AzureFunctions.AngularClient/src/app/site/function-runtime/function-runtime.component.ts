@@ -1,4 +1,4 @@
-import { TabsComponent } from './../../tabs/tabs.component';
+import { SiteTabComponent } from './../site-dashboard/site-tab/site-tab.component';
 import { BusyStateComponent } from './../../busy-state/busy-state.component';
 import { EditModeHelper } from './../../shared/Utilities/edit-mode.helper';
 import { Component, Input, EventEmitter, OnInit, OnDestroy } from '@angular/core';
@@ -90,10 +90,10 @@ export class FunctionRuntimeComponent implements OnDestroy {
     private _aiService: AiService,
     private _translateService: TranslateService,
     private _slotsService: SlotsService,
-    tabsComponent: TabsComponent
+    siteTabsComponent: SiteTabComponent
   ) {
 
-    this._busyState = tabsComponent.busyState;
+    this._busyState = siteTabsComponent.busyState;
 
     this.showTryView = this._globalStateService.showTryView;
     this._viewInfoSub = this._viewInfoStream
