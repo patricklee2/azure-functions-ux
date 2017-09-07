@@ -45,7 +45,8 @@ namespace AzureFunctions.Authentication
 
             response.Headers["Strict-Transport-Security"] = "max-age=0";
 
-            if (request.UrlReferrer!=null && request.UrlReferrer.AbsolutePath.StartsWith("/try", StringComparison.OrdinalIgnoreCase))
+            //if (request.UrlReferrer!=null && request.UrlReferrer.AbsolutePath.EndsWith("/try", StringComparison.OrdinalIgnoreCase))
+            if(request.UrlReferrer != null && HttpUtility.ParseQueryString(request.UrlReferrer.Query).Get("trial") == "true")
             {
                 return true;
             }
@@ -212,6 +213,10 @@ namespace AzureFunctions.Authentication
             strb.AppendFormat("&site_id={0}", WebUtility.UrlEncode(site_id));
             strb.AppendFormat("&response_mode={0}", WebUtility.UrlEncode(response_mode));
             strb.AppendFormat("&state={0}", WebUtility.UrlEncode(state ?? request.Url.PathAndQuery));
+
+            //var url = new Uri(string.Format("https://{0}/{1}", request.Url.Authority, request.RawUrl));
+
+            //strb.AppendFormat("&state={0}", WebUtility.UrlEncode(state ?? request.RawUrl));
 
             return strb.ToString();
         }

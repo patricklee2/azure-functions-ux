@@ -224,7 +224,7 @@ export class FunctionNewComponent {
     }
 
     quickstart() {
-        this.functionsNode.openCreateDashboard(DashboardType.createFunctionQuickstart);
+        this.functionsNode.openCreateDashboard(DashboardType.CreateFunctionQuickstartDashboard);
     }
 
     onAuth() {

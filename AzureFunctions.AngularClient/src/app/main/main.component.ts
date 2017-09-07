@@ -1,5 +1,8 @@
+import { PortalService } from './../shared/services/portal.service';
+import { ArmTryService } from './../shared/services/arm-try.service';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FunctionApp } from './../shared/function-app';
-import { Component, ViewChild, AfterViewInit, Input } from '@angular/core';
+import { Component, ViewChild, AfterViewInit } from '@angular/core';
 import { TreeViewInfo } from '../tree-view/models/tree-view-info';
 import { DashboardType } from '../tree-view/models/dashboard-type';
 import { UserService } from '../shared/services/user.service';
@@ -26,20 +29,21 @@ import { FunctionInfo } from 'app/shared/models/function-info';
     styleUrls: ['./main.component.scss']
 })
 export class MainComponent implements AfterViewInit {
+    public ready = false;
     public resourceId: string;
     public viewInfo: TreeViewInfo<any>;
     public dashboardType: string;
     public inIFrame: boolean;
     public inTab: boolean;
     public selectedFunction: FunctionInfo;
+    public tryFunctionApp: FunctionApp;
 
     @ViewChild(BusyStateComponent) busyStateComponent: BusyStateComponent;
-
-    @Input() tryFunctionApp: FunctionApp;
 
     constructor(private _userService: UserService,
         private _globalStateService: GlobalStateService,
         private _cacheService: CacheService,
+        private _portalService: PortalService,
         _ngHttp: Http,
         _translateService: TranslateService,
         _broadcastService: BroadcastService,
@@ -48,10 +52,14 @@ export class MainComponent implements AfterViewInit {
         _authZService: AuthzService,
         _configService: ConfigService,
         _slotsService: SlotsService,
-        _aiService: AiService) {
+        _aiService: AiService,
+        route: ActivatedRoute,
+        router: Router) {
 
         this.inIFrame = _userService.inIFrame;
         this.inTab = _userService.inTab; // are we in a tab
+
+        this.tryFunctionApp = (<ArmTryService>_armService).tryFunctionApp;
 
         if (this.inTab) {
             this.initializeChildWindow(_userService,
@@ -67,6 +75,20 @@ export class MainComponent implements AfterViewInit {
                 _slotsService,
                 _aiService);
         }
+    }
+
+    ngAfterViewInit(){
+        this._userService.getStartupInfo()
+        .first()
+        .subscribe(info => {
+            this._globalStateService.GlobalBusyStateComponent = this.busyStateComponent;
+            this.ready = true;
+
+            this._portalService.sendTimerEvent({
+                timerId: 'PortalReady',
+                timerAction: 'stop'
+            });
+        });
     }
 
     private initializeChildWindow(_userService: UserService,
@@ -133,11 +155,6 @@ export class MainComponent implements AfterViewInit {
 
         this.viewInfo = viewInfo;
         this.dashboardType = DashboardType[viewInfo.dashboardType];
-    }
-
-    ngAfterViewInit() {
-        this._globalStateService.clearBusyState();
-        this._globalStateService.GlobalBusyStateComponent = this.busyStateComponent;
     }
 
     public get trialExpired() {
