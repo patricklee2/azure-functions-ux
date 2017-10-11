@@ -174,7 +174,8 @@ export class MonacoEditorDirective {
                     language: that._language,
                     readOnly: that._disabled,
                     lineHeight: 17,
-                    theme: this._theme === 'dark' ? 'vs-dark' : 'vs'
+                    theme: this._theme === 'dark' ? 'vs-dark' : 'vs',
+                    automaticLayout: true
                 });
                 this.opacity = this._disabled ? '0.5' : '1';
 
